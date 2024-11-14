@@ -190,6 +190,7 @@ public class EventTicketingSystem extends JFrame {
 
     private void applyUIEnhancements() {
         // Apply a gradient background for the header panel
+        // Apply a gradient background for the header panel
         JPanel headerPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -201,5 +202,27 @@ public class EventTicketingSystem extends JFrame {
             }
         };
         headerPanel.setPreferredSize(new Dimension(getWidth(), 60));
+        headerPanel.setBackground(new Color(0, 102, 204));
+
+        // Add header panel to the top of the frame (this is optional and depends on your design)
+        JPanel containerPanel = new JPanel(new BorderLayout());
+        containerPanel.add(headerPanel, BorderLayout.NORTH);
+        containerPanel.add(tabbedPane, BorderLayout.CENTER);
+        add(containerPanel);
+
+        // Add a label to the header
+        JLabel headerLabel = new JLabel("Event Ticketing System", JLabel.CENTER);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 24));
+        headerLabel.setForeground(Color.WHITE);
+        headerPanel.add(headerLabel);
+    }
+
+    public static void main(String[] args) {
+        // Run the GUI on the Event Dispatch Thread
+        SwingUtilities.invokeLater(() -> {
+            EventTicketingSystem window = new EventTicketingSystem();
+            window.setVisible(true);
+        });
     }
 }
+            
