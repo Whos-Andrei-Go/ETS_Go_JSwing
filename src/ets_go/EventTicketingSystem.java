@@ -1,7 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package ets_go;
 
 import javax.swing.*;
@@ -18,10 +14,13 @@ public class EventTicketingSystem extends JFrame {
     private DefaultTableModel eventTableModel;
     private JTable eventTable;
 
+    private DefaultTableModel userTableModel;
+    private JTable userTable;
+
     // Database connection details for Microsoft SQL Server
-    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=ETS_DB;user=sa;password=password;";
+    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=ETS_DB;user=sa;password=sa;trustServerCertificate=true";
     private static final String DB_USER = "sa";  // Username for your database
-    private static final String DB_PASSWORD = "password"; // Password for your database
+    private static final String DB_PASSWORD = "sa"; // Password for your database
 
     public EventTicketingSystem() {
         setTitle("Event Ticketing System - Admin Dashboard");
@@ -35,7 +34,7 @@ public class EventTicketingSystem extends JFrame {
 
         // Create panels
         eventPanel = createEventManagementPanel();
-        userPanel = new JPanel(); // Placeholder panel
+        userPanel = createUserManagementPanel();
         statsPanel = new JPanel(); // Placeholder panel
 
         tabbedPane.addTab("Manage Events", eventPanel);
@@ -50,6 +49,7 @@ public class EventTicketingSystem extends JFrame {
         applyUIEnhancements();
     }
 
+    // --- Event Management Panel ---
     private JPanel createEventManagementPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new BorderLayout());
@@ -101,6 +101,62 @@ public class EventTicketingSystem extends JFrame {
         return panel;
     }
 
+    // --- User Management Panel ---
+    private JPanel createUserManagementPanel() {
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+
+        // Create a table model for the users
+        String[] userColumns = {"User ID", "Username", "Email", "Role"};
+        userTableModel = new DefaultTableModel(userColumns, 0);
+        userTable = new JTable(userTableModel);
+
+        // Load user data from the database
+        loadUsersFromDatabase();
+
+        // Add the table with a scroll pane
+        JScrollPane scrollPane = new JScrollPane(userTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        // Add buttons for managing users
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.setBackground(new Color(245, 245, 245));
+
+        JButton addUserButton = createButton("Add User", "/icons/add.png");
+        JButton deleteUserButton = createButton("Delete User", "/icons/delete.png");
+
+        buttonPanel.add(addUserButton);
+        buttonPanel.add(deleteUserButton);
+
+        addUserButton.addActionListener(e -> {
+            String username = JOptionPane.showInputDialog(this, "Enter Username:");
+            String email = JOptionPane.showInputDialog(this, "Enter Email:");
+            String password = JOptionPane.showInputDialog(this, "Enter Password:");
+            String role = JOptionPane.showInputDialog(this, "Enter Role (Admin, Organizer, Attendee):");
+
+            if (username != null && !username.trim().isEmpty() && email != null && !email.trim().isEmpty() && password != null && !password.trim().isEmpty() && role != null && !role.trim().isEmpty()) {
+                addUserToDatabase(username, email, password, role);
+                loadUsersFromDatabase(); // Reload data
+            }
+        });
+
+        deleteUserButton.addActionListener(e -> {
+            int selectedRow = userTable.getSelectedRow();
+            if (selectedRow != -1) {
+                int userId = (int) userTable.getValueAt(selectedRow, 0);
+                deleteUserFromDatabase(userId);
+                loadUsersFromDatabase(); // Reload data
+            } else {
+                JOptionPane.showMessageDialog(this, "Please select a user to delete.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        });
+
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    // --- Load Data Methods ---
     private void loadEventsFromDatabase() {
         // Clear the current data in the table
         eventTableModel.setRowCount(0);
@@ -125,6 +181,32 @@ public class EventTicketingSystem extends JFrame {
         }
     }
 
+    private void loadUsersFromDatabase() {
+        // Clear the current data in the table
+        userTableModel.setRowCount(0);
+
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             Statement statement = connection.createStatement();
+             ResultSet resultSet = statement.executeQuery("SELECT * FROM users")) {
+
+            // Loop through the results and add each row to the table
+            while (resultSet.next()) {
+                int userId = resultSet.getInt("user_id");
+                String username = resultSet.getString("username");
+                String email = resultSet.getString("email");
+                String role = resultSet.getString("role");
+
+                // Add a row to the table
+                userTableModel.addRow(new Object[]{userId, username, email, role});
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error loading users from the database.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // --- Add/Remove Data Methods ---
     private void addEventToDatabase(String name, String date) {
         try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO events (name, date) VALUES (?, ?)")) {
@@ -164,13 +246,57 @@ public class EventTicketingSystem extends JFrame {
         }
     }
 
-    // Helper method to create styled buttons
+    private void addUserToDatabase(String username, String email, String password, String role) {
+        if (password != null && !password.trim().isEmpty()) {
+            try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD); PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO users (username, email, role, password) VALUES (?, ?, ?, ?)")) {
+
+                preparedStatement.setString(1, username);
+                preparedStatement.setString(2, email);
+                preparedStatement.setString(3, role);
+                preparedStatement.setString(4, password);
+
+                int rowsAffected = preparedStatement.executeUpdate();
+                if (rowsAffected > 0) {
+                    JOptionPane.showMessageDialog(this, "User added successfully!");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Failed to add user.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(this, "Error adding user to the database.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this, "Password cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void deleteUserFromDatabase(int userId) {
+        try (Connection connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement preparedStatement = connection.prepareStatement("DELETE FROM users WHERE user_id = ?")) {
+
+            preparedStatement.setInt(1, userId);
+
+            int rowsAffected = preparedStatement.executeUpdate();
+            if (rowsAffected > 0) {
+                JOptionPane.showMessageDialog(this, "User deleted successfully!");
+            } else {
+                JOptionPane.showMessageDialog(this, "Failed to delete user.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error deleting user from the database.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    // --- Helper Methods ---
     private JButton createButton(String text, String iconPath) {
         JButton button = new JButton(text);
         button.setFont(new Font("Arial", Font.PLAIN, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(new Color(0, 102, 204));
-        button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
+        //button.setIcon(new ImageIcon(getClass().getResource(iconPath)));
         button.setFocusPainted(false);
         button.setPreferredSize(new Dimension(150, 40));
         button.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -190,7 +316,6 @@ public class EventTicketingSystem extends JFrame {
 
     private void applyUIEnhancements() {
         // Apply a gradient background for the header panel
-        // Apply a gradient background for the header panel
         JPanel headerPanel = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
@@ -204,13 +329,11 @@ public class EventTicketingSystem extends JFrame {
         headerPanel.setPreferredSize(new Dimension(getWidth(), 60));
         headerPanel.setBackground(new Color(0, 102, 204));
 
-        // Add header panel to the top of the frame (this is optional and depends on your design)
         JPanel containerPanel = new JPanel(new BorderLayout());
         containerPanel.add(headerPanel, BorderLayout.NORTH);
         containerPanel.add(tabbedPane, BorderLayout.CENTER);
         add(containerPanel);
 
-        // Add a label to the header
         JLabel headerLabel = new JLabel("Event Ticketing System", JLabel.CENTER);
         headerLabel.setFont(new Font("Arial", Font.BOLD, 24));
         headerLabel.setForeground(Color.WHITE);
@@ -218,11 +341,9 @@ public class EventTicketingSystem extends JFrame {
     }
 
     public static void main(String[] args) {
-        // Run the GUI on the Event Dispatch Thread
         SwingUtilities.invokeLater(() -> {
             EventTicketingSystem window = new EventTicketingSystem();
             window.setVisible(true);
         });
     }
 }
-            
