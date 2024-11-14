@@ -19,7 +19,7 @@ public class EventTicketingSystem extends JFrame {
     private JTable eventTable;
 
     // Database connection details for Microsoft SQL Server
-    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=eventdb;user=sa;password=password;";
+    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=ETS_DB;user=sa;password=password;";
     private static final String DB_USER = "sa";  // Username for your database
     private static final String DB_PASSWORD = "password"; // Password for your database
 
